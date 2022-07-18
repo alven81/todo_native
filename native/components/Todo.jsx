@@ -1,120 +1,124 @@
-import { Button, Text, View, TextInput, FlatList } from "react-native";
+import { Button, Text, View, TextInput, FlatList, SafeAreaView, Item } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useEffect, useState } from "react";
 import colors from "../res/colors";
 import fonts from "../res/fonts";
+
+//const todoArray = [];
 
 const Todo = () => {
 	const [inputs, setInputs] = useState("0");
 	const [inputText, setInputText] = useState("");
 	const [todoMsgList, setTodoMsgList] = useState([]);
 	const [idLength, setIdLength] = useState(0);
-	const todoArray = [];
 	const [alertMes, setAlertMes] = useState("");
+	const [todoArray, setTodoArray] = useState("");
 
-	const readIdLength = async () => {
-		try {
-			const value = await AsyncStorage.getItem("0");
-			if (value !== null) {
-				setInputs(+value);
-			}
-		} catch (e) {
-			alert("Failed to fetch the input from storage");
-		}
-	};
-
-	readIdLength();
 
 	useEffect(() => {
-		try {
-			if (Number(inputs)) {
-				setAlertMes("here is " + inputs + " records");
-				for (let i = 1; i <= inputs; i++) {
-					readData(i);
-				}
+		readData();
+	}, []);
+
+	const readIdLength = () => {
+		console.warn("readIdLength", todoArray.length);
+			if (todoArray) {
+				setInputs(todoArray.length);
 			} else {
-				setAlertMes("no todo data");
+				setInputs(0);
 			}
+	};
+
+	const clearStorage = async () => {
+		try {
+		  await AsyncStorage.clear();
+		  readData();
+		  alert('Storage successfully cleared!');
 		} catch (e) {
-			alert("can't read array!");
+		  console.warn('Failed to clear the async storage.');
 		}
-	}, [inputs]);
+	  };
 
-	// useEffect(() => {
-	//     console.warn("useEffect", todoMsgList);
-	// }, [todoMsgList])
 
-	// function increaseId() {
-	//     readIdLength();
-	//     setIdLength({idLength} + 1)
-	// }
 
-	// function decreaseId() {
-	//     setIdLength({idLength} - 1)
-	// }
-
-	const handleAddTodoRecord = () => {
+	const handleAddTodoRecord = (inputText) => {
+		console.warn("inputText", inputText);
+		//console.warn("todoArray length", todoArray.length);
 		try {
-			if (Number(inputs)) {
-				let id = Number(inputs) + 1;
-
-				saveData(id, inputText);
-				recordIdLength(id);
-				console.warn("add second data, here is " + { id } + " records");
-			} else {
-				saveData(1, inputText);
-				recordIdLength(1);
-				console.warn("add first todo data");
-			}
+				if (!todoArray) {
+					console.warn("ADD FIRST RECORD");
+					todoArray.push({
+						"text": inputText, 
+						"date": new Date().toLocaleDateString(), 
+						"time": new Date().toLocaleTimeString()}
+					);
+					saveData("1", todoArray);	
+				} 
+					else
+				{
+					todoArray.push({
+						"text": inputText, 
+						"date": new Date().toLocaleDateString(),
+						"time": new Date().toLocaleTimeString()}
+					)
+					console.warn("ADD OTHER RECORDS");
+					console.warn("after push: ", todoArray);
+					//console.warn("todoArray length", todoArray.length);
+					saveData("1", todoArray);
+				}
 		} catch (e) {
-			alert("can't read array!");
+				alert("can't read array!");
+		}
+			finally {
+				console.warn("Finally todoArray:", todoArray);
 		}
 	};
+
 
 	const saveData = async (id, value) => {
 		try {
-			await AsyncStorage.setItem(id, value);
-			console.warn("Data successfully saved");
+			await AsyncStorage.setItem(id, JSON.stringify(value));
+			readData();
 		} catch (e) {
-			alert("Failed to save the data to the storage");
+			alert("Failed to save the data to the storage1");
 		}
 	};
 
-	const readData = async (id) => {
+
+	
+	const readData = async () => {
 		try {
-			const value = await AsyncStorage.getItem(id);
-			if (value !== null) {
-				todoArray.push([id, value]);
-				console.warn("todoArray", todoArray);
-			}
+			const result = await AsyncStorage.getItem("1");
+			if (!result) {
+				setTodoArray([])	
+			} else
+			setTodoArray(JSON.parse(result));
 		} catch (e) {
 			alert("Failed to fetch the input from storage");
 		} finally {
-			setTodoMsgList(todoArray);
+
 		}
 	};
 
-	const recordIdLength = async (value) => {
-		try {
-			await AsyncStorage.setItem("0", value);
-			console.warn("Data successfully saved");
-		} catch (e) {
-			alert("Failed to save the data to the storage");
-		} finally {
-			readIdLength();
-		}
-	};
+
+	const renderItem = ({ item }) => (
+		<View style={{borderColor: colors.mainWhite, borderWidth: 1, margin: 5, borderRadius: 6, padding: 3}}>
+			<Text style={{fontFamily: fonts.main,  color: colors.mainGreen}}>{item.date}, {item.time}</Text>
+	  		<Text style={{fontFamily: fonts.main, color: colors.mainGreen}}>{item.text}</Text>
+		</View>
+	);
+
 
 	return (
-		<>
+		<View style={{backgroundColor: colors.mainBlack}}>
 			<Text>Alert: {alertMes}</Text>
 			<TextInput
 				style={{
-					borderColor: colors.mainBlack,
+					borderColor: colors.mainWhite,
 					borderWidth: 1,
 					borderRadius: 5,
 					paddingHorizontal: 5,
 					width: "90%",
+					color: colors.mainGreen
 				}}
 				onChangeText={setInputText}
 				value={inputText}
@@ -122,36 +126,31 @@ const Todo = () => {
 
 			<Text>{"Id length is: " + inputs}</Text>
 
-			<Button title="reset" onPress={() => recordIdLength(0)} />
-			<Button title="Read ID length" onPress={() => readIdLength()} />
+			<Button title="reset" onPress={() => clearStorage()} />
 
 			{/* add todo */}
 			<Button
 				title="Add record"
 				onPress={() => handleAddTodoRecord(inputText)}
 			/>
-			<Button
-				title="Show TodoArray"
-				onPress={() => console.warn(todoMsgList)}
-			/>
 			<View>
-				{!todoMsgList.length ? (
+				{!todoArray.length ? (
 					<Text>Load...</Text>
 				) : (
-                    <FlatList>
-                        
+					<SafeAreaView>
+					<FlatList
+					  data={todoArray}
+					  renderItem={renderItem}
+					  keyExtractor={item => item.text}
+					/>
+				  </SafeAreaView>
 
-                    </FlatList>
-					todoMsgList.map((value, index) => {
-                        <Text>{index}</Text>
-						// <>
-						// 	<Text>{value[index[1]]}</Text>
-						// 	<Text>{value[index[2]]}</Text>
-						// </>;
-					})
-				)}
-			</View>
-		</>
+)
+}
+
+ 	 		</View> 
+				
+		</View>		
 	);
 };
 
